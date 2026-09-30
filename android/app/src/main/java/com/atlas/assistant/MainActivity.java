@@ -39,7 +39,6 @@ import androidx.webkit.WebViewAssetLoader;
 
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.AuthCredential;
@@ -263,7 +262,7 @@ public class MainActivity extends ComponentActivity {
                         sendGoogleResult(true, user.toString(), null, null);
                     })
                     .addOnFailureListener(e -> sendGoogleResult(false, null, e.getMessage(), "FIREBASE_AUTH_ERROR"));
-        } catch (GoogleIdTokenParsingException e) {
+        } catch (Exception e) {
             sendGoogleResult(false, null, e.getMessage(), "GOOGLE_TOKEN_ERROR");
         }
     }

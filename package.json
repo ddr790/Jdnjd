@@ -1,0 +1,9 @@
+{
+  "name": "atlas",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "android:build": "cd android && gradle :app:assembleRelease",
+    "android:debug": "cd android && gradle :app:assembleDebug"
+  }
+}

@@ -1,0 +1,110 @@
+workflows:
+  atlas-android-release:
+    name: ATLAS Android Release (APK + AAB)
+    max_build_duration: 120
+    instance_type: linux_x2
+    environment:
+      vars:
+        PACKAGE_NAME: "com.atlas.assistant"
+        JAVA_VERSION: "17"
+    scripts:
+      - name: Verify Android project
+        script: |
+          set -e
+          test -f settings.gradle
+          test -f android/app/build.gradle
+          test -f android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/java/com/atlas/assistant/MainActivity.java
+          test -f android/app/src/main/assets/public/index.html
+          test -f codemagic.yaml
+          echo "Project structure OK"
+      - name: Set Android SDK location
+        script: |
+          set -e
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+      - name: Generate runtime configuration
+        script: |
+          set -eu
+          : "${ATLAS_FIREBASE_API_KEY:?Missing ATLAS_FIREBASE_API_KEY}"
+          : "${ATLAS_FIREBASE_AUTH_DOMAIN:?Missing ATLAS_FIREBASE_AUTH_DOMAIN}"
+          : "${ATLAS_FIREBASE_PROJECT_ID:?Missing ATLAS_FIREBASE_PROJECT_ID}"
+          : "${ATLAS_FIREBASE_STORAGE_BUCKET:?Missing ATLAS_FIREBASE_STORAGE_BUCKET}"
+          : "${ATLAS_FIREBASE_MESSAGING_SENDER_ID:?Missing ATLAS_FIREBASE_MESSAGING_SENDER_ID}"
+          : "${ATLAS_FIREBASE_APP_ID:?Missing ATLAS_FIREBASE_APP_ID}"
+          cat > android/app/src/main/assets/public/config.js <<CONFIG
+          // Generated at build time. Do not commit real values.
+          window.ATLAS_CONFIG={
+            dify:{url:"${ATLAS_DIFY_URL:-https://api.dify.ai/v1}",key:"${ATLAS_DIFY_KEY:-}"},
+            firebase:{apiKey:"$ATLAS_FIREBASE_API_KEY",authDomain:"$ATLAS_FIREBASE_AUTH_DOMAIN",projectId:"$ATLAS_FIREBASE_PROJECT_ID",storageBucket:"$ATLAS_FIREBASE_STORAGE_BUCKET",messagingSenderId:"$ATLAS_FIREBASE_MESSAGING_SENDER_ID",appId:"$ATLAS_FIREBASE_APP_ID",measurementId:"${ATLAS_FIREBASE_MEASUREMENT_ID:-}"},
+            image:{model:"${ATLAS_IMAGE_MODEL:-gemini-3.1-flash-image}"}
+          };
+          window.ATLAS_IMAGE_CONFIG={apiKey:"${ATLAS_IMAGE_API_KEY:-}",model:"${ATLAS_IMAGE_MODEL:-gemini-3.1-flash-image}",endpoint:"https://generativelanguage.googleapis.com/v1beta/interactions"};
+          window.ATLAS_CALENDAR_CONFIG={apiKey:"${ATLAS_CALENDAR_API_KEY:-}"};
+          window.ATLAS_LINE_CONFIG={channelId:"${ATLAS_LINE_CHANNEL_ID:-}",shareEnabled:true};
+          window.ATLAS_AGENT_CONFIG={endpoint:""};
+          CONFIG
+          test -s android/app/src/main/assets/public/config.js
+          echo "Runtime configuration generated. Secret values were not echoed."
+      - name: Run Android lint
+        script: |
+          set -e
+          if [ -x ./gradlew ]; then
+            ./gradlew :android:app:lintRelease --stacktrace
+          else
+            gradle :android:app:lintRelease --stacktrace
+          fi
+      - name: Build release APK and AAB
+        script: |
+          set -e
+          if [ -x ./gradlew ]; then
+            ./gradlew :android:app:assembleRelease :android:app:bundleRelease --stacktrace
+          else
+            gradle :android:app:assembleRelease :android:app:bundleRelease --stacktrace
+          fi
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/lint-results-*.html
+
+  atlas-android-signed-release:
+    name: ATLAS Signed Release (APK + AAB)
+    max_build_duration: 120
+    instance_type: linux_x2
+    environment:
+      android_signing:
+        - atlas_release
+      vars:
+        PACKAGE_NAME: "com.atlas.assistant"
+        JAVA_VERSION: "17"
+    scripts:
+      - name: Set Android SDK location
+        script: |
+          set -e
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+      - name: Generate runtime configuration
+        script: |
+          set -eu
+          : "${ATLAS_FIREBASE_API_KEY:?Missing ATLAS_FIREBASE_API_KEY}"
+          : "${ATLAS_FIREBASE_AUTH_DOMAIN:?Missing ATLAS_FIREBASE_AUTH_DOMAIN}"
+          : "${ATLAS_FIREBASE_PROJECT_ID:?Missing ATLAS_FIREBASE_PROJECT_ID}"
+          : "${ATLAS_FIREBASE_STORAGE_BUCKET:?Missing ATLAS_FIREBASE_STORAGE_BUCKET}"
+          : "${ATLAS_FIREBASE_MESSAGING_SENDER_ID:?Missing ATLAS_FIREBASE_MESSAGING_SENDER_ID}"
+          : "${ATLAS_FIREBASE_APP_ID:?Missing ATLAS_FIREBASE_APP_ID}"
+          cat > android/app/src/main/assets/public/config.js <<CONFIG
+          window.ATLAS_CONFIG={dify:{url:"${ATLAS_DIFY_URL:-https://api.dify.ai/v1}",key:"${ATLAS_DIFY_KEY:-}"},firebase:{apiKey:"$ATLAS_FIREBASE_API_KEY",authDomain:"$ATLAS_FIREBASE_AUTH_DOMAIN",projectId:"$ATLAS_FIREBASE_PROJECT_ID",storageBucket:"$ATLAS_FIREBASE_STORAGE_BUCKET",messagingSenderId:"$ATLAS_FIREBASE_MESSAGING_SENDER_ID",appId:"$ATLAS_FIREBASE_APP_ID",measurementId:"${ATLAS_FIREBASE_MEASUREMENT_ID:-}"},image:{model:"${ATLAS_IMAGE_MODEL:-gemini-3.1-flash-image}"}};
+          window.ATLAS_IMAGE_CONFIG={apiKey:"${ATLAS_IMAGE_API_KEY:-}",model:"${ATLAS_IMAGE_MODEL:-gemini-3.1-flash-image}",endpoint:"https://generativelanguage.googleapis.com/v1beta/interactions"};
+          window.ATLAS_CALENDAR_CONFIG={apiKey:"${ATLAS_CALENDAR_API_KEY:-}"};
+          window.ATLAS_LINE_CONFIG={channelId:"${ATLAS_LINE_CHANNEL_ID:-}",shareEnabled:true};
+          window.ATLAS_AGENT_CONFIG={endpoint:""};
+          CONFIG
+      - name: Build signed APK and AAB
+        script: |
+          set -e
+          if [ -x ./gradlew ]; then
+            ./gradlew :android:app:assembleRelease :android:app:bundleRelease --stacktrace
+          else
+            gradle :android:app:assembleRelease :android:app:bundleRelease --stacktrace
+          fi
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/*.aab

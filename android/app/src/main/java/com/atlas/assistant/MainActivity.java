@@ -1,7 +1,6 @@
 package com.atlas.assistant;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -27,6 +26,7 @@ import android.provider.CalendarContract;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.activity.ComponentActivity;
 import androidx.credentials.Credential;
 import androidx.credentials.CredentialManager;
 import androidx.credentials.CredentialManagerCallback;
@@ -54,7 +54,7 @@ import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends Activity {
+public class MainActivity extends ComponentActivity {
     private static final int REQ_MEDIA = 1001;
     private static final int REQ_FILE_CHOOSER = 1003;
 
